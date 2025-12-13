@@ -6,7 +6,7 @@ import (
 
 	"github.com/school-system/backend/internal/config"
 	"github.com/school-system/backend/internal/models"
-	"gorm.io/driver/mysql"
+	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 	"gorm.io/gorm/logger"
 )
@@ -19,7 +19,7 @@ func Connect(cfg *config.Config) (*gorm.DB, error) {
 		logLevel = logger.Silent
 	}
 
-	db, err := gorm.Open(mysql.Open(cfg.Database.DSN), &gorm.Config{
+	db, err := gorm.Open(postgres.Open(cfg.Database.DSN), &gorm.Config{
 		Logger: logger.Default.LogMode(logLevel),
 	})
 	if err != nil {

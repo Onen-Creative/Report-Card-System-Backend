@@ -10,11 +10,11 @@ import (
 )
 
 type Config struct {
-	Server   ServerConfig
-	Database DatabaseConfig
-	JWT      JWTConfig
-	Argon2   Argon2Config
-	CORS     CORSConfig
+	Server     ServerConfig
+	Database   DatabaseConfig
+	JWT        JWTConfig
+	Argon2     Argon2Config
+	CORS       CORSConfig
 	Monitoring MonitoringConfig
 }
 
@@ -64,18 +64,18 @@ func Load() (*Config, error) {
 	// Prepare database DSN
 	var dsn string
 	if databaseURL := getEnv("DATABASE_URL", ""); databaseURL != "" {
-		// Use DATABASE_URL directly
-		dsn = databaseURL + "?charset=utf8mb4&parseTime=True&loc=Local"
+		// Use DATABASE_URL directly (PostgreSQL format)
+		dsn = databaseURL
 	} else {
 		// Fallback to individual env vars
 		dbHost := getEnv("DB_HOST", "localhost")
-		dbPort := getEnv("DB_PORT", "3306")
-		dbUser := getEnv("DB_USER", "root")
+		dbPort := getEnv("DB_PORT", "5432")
+		dbUser := getEnv("DB_USER", "postgres")
 		dbPass := getEnv("DB_PASSWORD", "")
 		dbName := getEnv("DB_NAME", "school_system")
 
-		dsn = fmt.Sprintf("%s:%s@tcp(%s:%s)/%s?charset=utf8mb4&parseTime=True&loc=Local",
-			dbUser, dbPass, dbHost, dbPort, dbName)
+		dsn = fmt.Sprintf("host=%s user=%s password=%s dbname=%s port=%s sslmode=prefer",
+			dbHost, dbUser, dbPass, dbName, dbPort)
 	}
 
 	cfg := &Config{

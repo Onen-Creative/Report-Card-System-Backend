@@ -1,0 +1,21 @@
+services:
+  - type: web
+    name: school-system-api
+    env: go
+    buildCommand: go build -o main cmd/api/main.go
+    startCommand: ./main
+    envVars:
+      - key: PORT
+        sync: false
+      - key: DATABASE_URL
+        sync: false
+      - key: JWT_SECRET
+        generateValue: true
+      - key: REDIS_URL
+        sync: false
+      - key: MINIO_ENDPOINT
+        sync: false
+      - key: MINIO_ACCESS_KEY
+        sync: false
+      - key: MINIO_SECRET_KEY
+        sync: false
