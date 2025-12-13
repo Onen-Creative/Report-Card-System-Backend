@@ -65,7 +65,13 @@ func Load() (*Config, error) {
 	var dsn string
 	if databaseURL := getEnv("DATABASE_URL", ""); databaseURL != "" {
 		// Use DATABASE_URL directly (PostgreSQL format)
-		dsn = databaseURL
+		// Render provides: postgres://user:pass@host:port/dbname
+		// GORM expects: postgres://user:pass@host:port/dbname?sslmode=require
+		if databaseURL[0:8] == "postgres" {
+			dsn = databaseURL + "?sslmode=require"
+		} else {
+			dsn = databaseURL
+		}
 	} else {
 		// Fallback to individual env vars
 		dbHost := getEnv("DB_HOST", "localhost")

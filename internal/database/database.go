@@ -19,6 +19,9 @@ func Connect(cfg *config.Config) (*gorm.DB, error) {
 		logLevel = logger.Silent
 	}
 
+	// Debug: Log connection attempt (without password)
+	log.Printf("Attempting database connection with DSN: %s", maskPassword(cfg.Database.DSN))
+
 	db, err := gorm.Open(postgres.Open(cfg.Database.DSN), &gorm.Config{
 		Logger: logger.Default.LogMode(logLevel),
 	})
@@ -26,7 +29,16 @@ func Connect(cfg *config.Config) (*gorm.DB, error) {
 		return nil, fmt.Errorf("failed to connect to database: %w", err)
 	}
 
+	log.Println("Database connection successful")
 	return db, nil
+}
+
+func maskPassword(dsn string) string {
+	// Simple password masking for logging
+	if len(dsn) > 20 {
+		return dsn[:20] + "...***..."
+	}
+	return "***"
 }
 
 func Migrate(db *gorm.DB) error {
