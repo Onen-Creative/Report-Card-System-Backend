@@ -6,7 +6,6 @@ import (
 	"os"
 
 	"github.com/gin-gonic/gin"
-	"github.com/google/uuid"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/school-system/backend/internal/config"
 	"github.com/school-system/backend/internal/database"
@@ -167,7 +166,7 @@ func main() {
 			protected.GET("/students", studentHandler.List)
 			protected.GET("/students/:id", studentHandler.Get)
 			protected.GET("/students/:id/results", resultHandler.GetByStudent)
-			protected.GET("/subjects", subjectHandler.List)
+			protected.GET("/subjects", subjectHandler.ListStandardSubjects)
 			protected.GET("/subjects/levels", subjectHandler.GetLevels)
 			protected.POST("/results", resultHandler.CreateOrUpdate)
 			protected.POST("/upload/logo", uploadHandler.UploadLogo)
@@ -202,32 +201,8 @@ func handleCommand(cmd string) {
 	case "seed-admin":
 		seedAdmin(db, cfg)
 
-	case "seed-subjects":
-		seedSubjects(db)
-
-	case "seed-sample":
-		log.Println("Seeding sample data - TODO")
-
-	case "cleanup-duplicates":
-		cleanupDuplicates(db)
-
-	case "standardize-classes":
-		standardizeClassNames(db)
-
-	case "standardize-subjects":
-		standardizeSubjects(db)
-
 	case "seed-standard-subjects":
 		seedStandardSubjects(db)
-
-	case "migrate-to-standard-subjects":
-		migrateToStandardSubjects(db)
-
-	case "fix-foreign-keys":
-		fixForeignKeys(db)
-
-	case "cleanup-orphaned-data":
-		cleanupOrphanedData(db)
 
 	default:
 		log.Printf("Unknown command: %s", cmd)
@@ -308,324 +283,51 @@ func seedAdmin(db *gorm.DB, cfg *config.Config) {
 	log.Println("Teacher: teacher@school.ug / Teacher@123")
 }
 
-func seedSubjects(db *gorm.DB) {
-	var school models.School
-	if err := db.Where("name = ?", "Nabumali Secondary School").First(&school).Error; err != nil {
-		log.Fatal("School not found")
-	}
+func seedStandardSubjects(db *gorm.DB) {
+	log.Println("Seeding standard subjects...")
 
-	db.Where("school_id = ?", school.ID).Delete(&models.Subject{})
-
-	subjects := []models.Subject{}
-
-	// Nursery subjects
-	nurserySubjects := []models.Subject{
-		{SchoolID: school.ID, Name: "Language & Early Literacy", Code: "LIT", Level: "Nursery", IsCompulsory: true, Papers: 1},
-		{SchoolID: school.ID, Name: "Early Numeracy", Code: "NUM", Level: "Nursery", IsCompulsory: true, Papers: 1},
-		{SchoolID: school.ID, Name: "Social & Emotional Development", Code: "SED", Level: "Nursery", IsCompulsory: true, Papers: 1},
-		{SchoolID: school.ID, Name: "Creative Arts", Code: "ART", Level: "Nursery", IsCompulsory: true, Papers: 1},
-		{SchoolID: school.ID, Name: "Physical & Motor Skills", Code: "PMS", Level: "Nursery", IsCompulsory: true, Papers: 1},
-		{SchoolID: school.ID, Name: "Health, Hygiene & Nutrition", Code: "HHN", Level: "Nursery", IsCompulsory: true, Papers: 1},
-		{SchoolID: school.ID, Name: "Play & Environmental Awareness", Code: "PEA", Level: "Nursery", IsCompulsory: true, Papers: 1},
-	}
-
-	// P1-P3 subjects (thematic)
-	p13Subjects := []models.Subject{
-		{SchoolID: school.ID, Name: "Literacy", Code: "LIT", Level: "P1", IsCompulsory: true, Papers: 1},
-		{SchoolID: school.ID, Name: "Numeracy", Code: "NUM", Level: "P1", IsCompulsory: true, Papers: 1},
-		{SchoolID: school.ID, Name: "Life Skills", Code: "LS", Level: "P1", IsCompulsory: true, Papers: 1},
-		{SchoolID: school.ID, Name: "Creative Arts", Code: "ART", Level: "P1", IsCompulsory: true, Papers: 1},
-		{SchoolID: school.ID, Name: "Environment", Code: "ENV", Level: "P1", IsCompulsory: true, Papers: 1},
-	}
-
-	// P4-P7 subjects
-	p47Subjects := []models.Subject{
-		{SchoolID: school.ID, Name: "English Language", Code: "ENG", Level: "P4", IsCompulsory: true, Papers: 1},
-		{SchoolID: school.ID, Name: "Mathematics", Code: "MATH", Level: "P4", IsCompulsory: true, Papers: 1},
-		{SchoolID: school.ID, Name: "Integrated Science", Code: "SCI", Level: "P4", IsCompulsory: true, Papers: 1},
-		{SchoolID: school.ID, Name: "Social Studies", Code: "SST", Level: "P4", IsCompulsory: true, Papers: 1},
-		{SchoolID: school.ID, Name: "Local Language", Code: "LL", Level: "P4", IsCompulsory: true, Papers: 1},
-		{SchoolID: school.ID, Name: "Creative Arts", Code: "ART", Level: "P4", IsCompulsory: true, Papers: 1},
-		{SchoolID: school.ID, Name: "Physical Education", Code: "PE", Level: "P4", IsCompulsory: true, Papers: 1},
-		{SchoolID: school.ID, Name: "Agriculture", Code: "AGR", Level: "P4", IsCompulsory: true, Papers: 1},
-		{SchoolID: school.ID, Name: "ICT", Code: "ICT", Level: "P4", IsCompulsory: false, Papers: 1},
-	}
-
-	// S1-S4 compulsory subjects
-	s14Compulsory := []models.Subject{
-		{SchoolID: school.ID, Name: "English Language", Code: "ENG", Level: "S1", IsCompulsory: true, Papers: 1},
-		{SchoolID: school.ID, Name: "Mathematics", Code: "MATH", Level: "S1", IsCompulsory: true, Papers: 1},
-		{SchoolID: school.ID, Name: "Physics", Code: "PHY", Level: "S1", IsCompulsory: true, Papers: 1},
-		{SchoolID: school.ID, Name: "Chemistry", Code: "CHEM", Level: "S1", IsCompulsory: true, Papers: 1},
-		{SchoolID: school.ID, Name: "Biology", Code: "BIO", Level: "S1", IsCompulsory: true, Papers: 1},
-		{SchoolID: school.ID, Name: "Geography", Code: "GEO", Level: "S1", IsCompulsory: true, Papers: 1},
-		{SchoolID: school.ID, Name: "History & Political Education", Code: "HIST", Level: "S1", IsCompulsory: true, Papers: 1},
-		{SchoolID: school.ID, Name: "Religious Education", Code: "RE", Level: "S1", IsCompulsory: true, Papers: 1},
-		{SchoolID: school.ID, Name: "Entrepreneurship Education", Code: "ENT", Level: "S1", IsCompulsory: true, Papers: 1},
-		{SchoolID: school.ID, Name: "Kiswahili", Code: "KIS", Level: "S1", IsCompulsory: true, Papers: 1},
-		{SchoolID: school.ID, Name: "Physical Education", Code: "PE", Level: "S1", IsCompulsory: true, Papers: 1},
-	}
-
-	// S1-S4 electives
-	s14Electives := []models.Subject{
-		{SchoolID: school.ID, Name: "Literature in English", Code: "LIT", Level: "S1", IsCompulsory: false, Papers: 1},
-		{SchoolID: school.ID, Name: "ICT / Computer Studies", Code: "ICT", Level: "S1", IsCompulsory: false, Papers: 1},
-		{SchoolID: school.ID, Name: "Agriculture", Code: "AGR", Level: "S1", IsCompulsory: false, Papers: 1},
-		{SchoolID: school.ID, Name: "Performing Arts", Code: "PA", Level: "S1", IsCompulsory: false, Papers: 1},
-		{SchoolID: school.ID, Name: "Art & Design", Code: "AD", Level: "S1", IsCompulsory: false, Papers: 1},
-		{SchoolID: school.ID, Name: "Technology & Design", Code: "TD", Level: "S1", IsCompulsory: false, Papers: 1},
-		{SchoolID: school.ID, Name: "Nutrition & Food Tech", Code: "NFT", Level: "S1", IsCompulsory: false, Papers: 1},
-		{SchoolID: school.ID, Name: "Local Language", Code: "LL", Level: "S1", IsCompulsory: false, Papers: 1},
-	}
-
-	// S5-S6 Principal subjects
-	s56Principal := []models.Subject{
-		{SchoolID: school.ID, Name: "Mathematics", Code: "MATH", Level: "S5", IsCompulsory: false, Papers: 2},
-		{SchoolID: school.ID, Name: "Physics", Code: "PHY", Level: "S5", IsCompulsory: false, Papers: 3},
-		{SchoolID: school.ID, Name: "Chemistry", Code: "CHEM", Level: "S5", IsCompulsory: false, Papers: 3},
-		{SchoolID: school.ID, Name: "Biology", Code: "BIO", Level: "S5", IsCompulsory: false, Papers: 3},
-		{SchoolID: school.ID, Name: "Geography", Code: "GEO", Level: "S5", IsCompulsory: false, Papers: 3},
-		{SchoolID: school.ID, Name: "History & Political Education", Code: "HIST", Level: "S5", IsCompulsory: false, Papers: 3},
-		{SchoolID: school.ID, Name: "Religious Education", Code: "RE", Level: "S5", IsCompulsory: false, Papers: 2},
-		{SchoolID: school.ID, Name: "Entrepreneurship Education", Code: "ENT", Level: "S5", IsCompulsory: false, Papers: 2},
-		{SchoolID: school.ID, Name: "Agriculture", Code: "AGR", Level: "S5", IsCompulsory: false, Papers: 3},
-		{SchoolID: school.ID, Name: "Economics", Code: "ECON", Level: "S5", IsCompulsory: false, Papers: 2},
-		{SchoolID: school.ID, Name: "Luganda", Code: "LUG", Level: "S5", IsCompulsory: false, Papers: 2},
-		{SchoolID: school.ID, Name: "Art and Design", Code: "AD", Level: "S5", IsCompulsory: false, Papers: 2},
-		{SchoolID: school.ID, Name: "Literature", Code: "LIT", Level: "S5", IsCompulsory: false, Papers: 2},
-	}
-
-	// S5-S6 Subsidiary subjects
-	s56Subsidiary := []models.Subject{
-		{SchoolID: school.ID, Name: "General Paper", Code: "GP", Level: "S5", IsCompulsory: true, Papers: 1},
-		{SchoolID: school.ID, Name: "ICT", Code: "ICT", Level: "S5", IsCompulsory: false, Papers: 1},
-		{SchoolID: school.ID, Name: "Subsidiary Mathematics", Code: "SUBMATH", Level: "S5", IsCompulsory: false, Papers: 1},
-	}
-
-	// Add all subjects
-	subjects = append(subjects, nurserySubjects...)
-	for _, level := range []string{"P1", "P2", "P3"} {
-		for _, s := range p13Subjects {
-			s.Level = level
-			subjects = append(subjects, s)
-		}
-	}
-	for _, level := range []string{"P4", "P5", "P6", "P7"} {
-		for _, s := range p47Subjects {
-			s.Level = level
-			subjects = append(subjects, s)
-		}
-	}
-	for _, level := range []string{"S1", "S2", "S3", "S4"} {
-		for _, s := range s14Compulsory {
-			s.Level = level
-			subjects = append(subjects, s)
-		}
-		for _, s := range s14Electives {
-			s.Level = level
-			subjects = append(subjects, s)
-		}
-	}
-	for _, level := range []string{"S5", "S6"} {
-		for _, s := range s56Principal {
-			s.Level = level
-			subjects = append(subjects, s)
-		}
-		for _, s := range s56Subsidiary {
-			s.Level = level
-			subjects = append(subjects, s)
-		}
-	}
-
-	for _, subject := range subjects {
-		db.Create(&subject)
-	}
-
-	log.Printf("Seeded %d subjects for all levels", len(subjects))
-}
-
-func cleanupDuplicates(db *gorm.DB) {
-	// Find Tanna Memorial school
-	var school models.School
-	if err := db.Where("name LIKE ?", "%Tanna%").First(&school).Error; err != nil {
-		log.Println("Tanna Memorial school not found")
+	var count int64
+	db.Model(&models.StandardSubject{}).Count(&count)
+	if count > 0 {
+		log.Println("Standard subjects already exist")
 		return
 	}
 
-	log.Printf("Cleaning up duplicates for school: %s", school.Name)
-
-	// Remove duplicate classes - keep only the first occurrence of each unique combination
-	var classes []models.Class
-	db.Where("school_id = ?", school.ID).Find(&classes)
-
-	seen := make(map[string]uuid.UUID)
-	var toDelete []uuid.UUID
-
-	for _, class := range classes {
-		key := fmt.Sprintf("%s-%s-%d-%s", class.SchoolID, class.Level, class.Year, class.Term)
-		if _, exists := seen[key]; exists {
-			// This is a duplicate, mark for deletion
-			toDelete = append(toDelete, class.ID)
-			log.Printf("Marking duplicate class for deletion: %s %s %d %s", class.Level, class.Term, class.Year, class.ID)
-		} else {
-			// First occurrence, keep it
-			seen[key] = class.ID
-		}
+	// Pre-Primary (Nursery) Learning Domains
+	nurseryDomains := []models.StandardSubject{
+		{Name: "Language & Early Literacy", Code: "LEL", Level: "Nursery", IsCompulsory: true, Papers: 1, GradingType: "nursery", Description: "Language development and early literacy skills"},
+		{Name: "Early Numeracy", Code: "EN", Level: "Nursery", IsCompulsory: true, Papers: 1, GradingType: "nursery", Description: "Basic number concepts and mathematical thinking"},
+		{Name: "Social & Emotional Development", Code: "SED", Level: "Nursery", IsCompulsory: true, Papers: 1, GradingType: "nursery", Description: "Social skills and emotional development"},
+		{Name: "Creative Arts", Code: "CA", Level: "Nursery", IsCompulsory: true, Papers: 1, GradingType: "nursery", Description: "Music, drama, and art activities"},
+		{Name: "Physical & Motor Skills", Code: "PMS", Level: "Nursery", IsCompulsory: true, Papers: 1, GradingType: "nursery", Description: "Physical development and motor skills"},
+		{Name: "Health, Hygiene & Nutrition", Code: "HHN", Level: "Nursery", IsCompulsory: true, Papers: 1, GradingType: "nursery", Description: "Health awareness and hygiene practices"},
+		{Name: "Play & Environmental Awareness", Code: "PEA", Level: "Nursery", IsCompulsory: true, Papers: 1, GradingType: "nursery", Description: "Environmental awareness through play"},
 	}
 
-	// Delete duplicates
-	if len(toDelete) > 0 {
-		result := db.Where("id IN ?", toDelete).Delete(&models.Class{})
-		log.Printf("Deleted %d duplicate classes", result.RowsAffected)
-	} else {
-		log.Println("No duplicate classes found")
-	}
-
-	// Remove duplicate subjects
-	var subjects []models.Subject
-	db.Where("school_id = ?", school.ID).Find(&subjects)
-
-	subjectSeen := make(map[string]uuid.UUID)
-	var subjectsToDelete []uuid.UUID
-
-	for _, subject := range subjects {
-		key := fmt.Sprintf("%s-%s-%s", subject.SchoolID, subject.Name, subject.Level)
-		if _, exists := subjectSeen[key]; exists {
-			subjectsToDelete = append(subjectsToDelete, subject.ID)
-			log.Printf("Marking duplicate subject for deletion: %s %s %s", subject.Name, subject.Level, subject.ID)
-		} else {
-			subjectSeen[key] = subject.ID
-		}
-	}
-
-	if len(subjectsToDelete) > 0 {
-		result := db.Where("id IN ?", subjectsToDelete).Delete(&models.Subject{})
-		log.Printf("Deleted %d duplicate subjects", result.RowsAffected)
-	} else {
-		log.Println("No duplicate subjects found")
-	}
-
-	// Remove duplicate grading rules
-	var rules []models.GradingRule
-	db.Where("school_id = ?", school.ID).Find(&rules)
-
-	ruleSeen := make(map[string]uuid.UUID)
-	var rulesToDelete []uuid.UUID
-
-	for _, rule := range rules {
-		key := fmt.Sprintf("%s-%s", rule.SchoolID, rule.Level)
-		if _, exists := ruleSeen[key]; exists {
-			rulesToDelete = append(rulesToDelete, rule.ID)
-			log.Printf("Marking duplicate grading rule for deletion: %s %s", rule.Level, rule.ID)
-		} else {
-			ruleSeen[key] = rule.ID
-		}
-	}
-
-	if len(rulesToDelete) > 0 {
-		result := db.Where("id IN ?", rulesToDelete).Delete(&models.GradingRule{})
-		log.Printf("Deleted %d duplicate grading rules", result.RowsAffected)
-	} else {
-		log.Println("No duplicate grading rules found")
-	}
-
-	log.Println("Cleanup completed")
-}
-
-func standardizeClassNames(db *gorm.DB) {
-	log.Println("Standardizing class names...")
-
-	var classes []models.Class
-	db.Find(&classes)
-
-	for _, class := range classes {
-		standardName := fmt.Sprintf("%s %s %d", class.Level, class.Term, class.Year)
-		if class.Name != standardName {
-			log.Printf("Updating class name from '%s' to '%s'", class.Name, standardName)
-			db.Model(&class).Update("name", standardName)
-		}
-	}
-
-	log.Println("Class name standardization completed")
-}
-
-func standardizeSubjects(db *gorm.DB) {
-	log.Println("Standardizing subjects across all schools...")
-
-	// Don't delete existing subjects due to foreign key constraints
-	// Instead, we'll add missing subjects from standards
-
-	// Get all schools
-	var schools []models.School
-	db.Find(&schools)
-
-	for _, school := range schools {
-		log.Printf("Creating subjects for school: %s", school.Name)
-
-		// Get levels from school config
-		var levels []string
-		if school.Config != nil {
-			if configLevels, ok := school.Config["levels"].([]interface{}); ok {
-				for _, lvl := range configLevels {
-					if level, ok := lvl.(string); ok {
-						levels = append(levels, level)
-					}
-				}
-			}
-		}
-
-		// Create subjects for each level using standard subject service
-		standardSubjectService := services.NewStandardSubjectService(db)
-		err := standardSubjectService.CreateSchoolSubjectsFromStandard(school.ID, levels)
-		if err != nil {
-			log.Printf("Error creating subjects for school %s: %v", school.Name, err)
-		}
-	}
-
-	log.Println("Subject standardization completed")
-}
-
-func seedStandardSubjects(db *gorm.DB) {
-	log.Println("Seeding standard subjects from curriculum...")
-
-	// Clear existing standard subjects
-	db.Exec("DELETE FROM standard_subjects")
-
-	// Pre-Primary (Nursery) subjects
-	nurserySubjects := []models.StandardSubject{
-		{Name: "Language & Early Literacy", Code: "LIT", Level: "Nursery", IsCompulsory: true, Papers: 1, GradingType: "developmental", Description: "Language development and early literacy skills"},
-		{Name: "Early Numeracy", Code: "NUM", Level: "Nursery", IsCompulsory: true, Papers: 1, GradingType: "developmental", Description: "Basic number concepts and mathematical thinking"},
-		{Name: "Social & Emotional Development", Code: "SED", Level: "Nursery", IsCompulsory: true, Papers: 1, GradingType: "developmental", Description: "Social skills and emotional regulation"},
-		{Name: "Creative Arts", Code: "ART", Level: "Nursery", IsCompulsory: true, Papers: 1, GradingType: "developmental", Description: "Music, drama, and art activities"},
-		{Name: "Physical & Motor Skills", Code: "PMS", Level: "Nursery", IsCompulsory: true, Papers: 1, GradingType: "developmental", Description: "Gross and fine motor skill development"},
-		{Name: "Health, Hygiene & Nutrition", Code: "HHN", Level: "Nursery", IsCompulsory: true, Papers: 1, GradingType: "developmental", Description: "Health awareness and hygiene practices"},
-		{Name: "Play & Environmental Awareness", Code: "PEA", Level: "Nursery", IsCompulsory: true, Papers: 1, GradingType: "developmental", Description: "Environmental awareness through play"},
-	}
-
-	// P1-P3 thematic subjects
+	// P1-P3 Thematic Subjects
 	p13Subjects := []models.StandardSubject{
-		{Name: "Literacy", Code: "LIT", Level: "P1", IsCompulsory: true, Papers: 1, GradingType: "descriptive", Description: "Reading, writing, and communication skills"},
-		{Name: "Numeracy", Code: "NUM", Level: "P1", IsCompulsory: true, Papers: 1, GradingType: "descriptive", Description: "Basic mathematical concepts and problem solving"},
-		{Name: "Life Skills", Code: "LS", Level: "P1", IsCompulsory: true, Papers: 1, GradingType: "descriptive", Description: "Personal and social life skills"},
-		{Name: "Creative Arts", Code: "ART", Level: "P1", IsCompulsory: true, Papers: 1, GradingType: "descriptive", Description: "Creative expression through arts"},
-		{Name: "Environment", Code: "ENV", Level: "P1", IsCompulsory: true, Papers: 1, GradingType: "descriptive", Description: "Environmental awareness and science concepts"},
+		{Name: "Literacy", Code: "LIT", Level: "P1", IsCompulsory: true, Papers: 1, GradingType: "primary_lower", Description: "Reading, writing, and communication skills"},
+		{Name: "Numeracy", Code: "NUM", Level: "P1", IsCompulsory: true, Papers: 1, GradingType: "primary_lower", Description: "Basic mathematical concepts and problem solving"},
+		{Name: "Life Skills", Code: "LS", Level: "P1", IsCompulsory: true, Papers: 1, GradingType: "primary_lower", Description: "Personal and social life skills"},
+		{Name: "Creative Arts", Code: "CA", Level: "P1", IsCompulsory: true, Papers: 1, GradingType: "primary_lower", Description: "Creative expression through arts"},
+		{Name: "Environment", Code: "ENV", Level: "P1", IsCompulsory: true, Papers: 1, GradingType: "primary_lower", Description: "Environmental awareness and science concepts"},
 	}
 
-	// P4-P7 subjects
+	// P4-P7 Subjects
 	p47Subjects := []models.StandardSubject{
-		{Name: "English Language", Code: "ENG", Level: "P4", IsCompulsory: true, Papers: 1, GradingType: "standard", Description: "English language skills and communication"},
-		{Name: "Mathematics", Code: "MATH", Level: "P4", IsCompulsory: true, Papers: 1, GradingType: "standard", Description: "Mathematical concepts and problem solving"},
-		{Name: "Integrated Science", Code: "SCI", Level: "P4", IsCompulsory: true, Papers: 1, GradingType: "standard", Description: "Basic science concepts and investigations"},
-		{Name: "Social Studies", Code: "SST", Level: "P4", IsCompulsory: true, Papers: 1, GradingType: "standard", Description: "Social studies including CRE/IRE"},
-		{Name: "Local Language", Code: "LL", Level: "P4", IsCompulsory: true, Papers: 1, GradingType: "standard", Description: "Local language (Acoli, Luganda, Lango, or Lumasaba)"},
-		{Name: "Creative Arts", Code: "ART", Level: "P4", IsCompulsory: true, Papers: 1, GradingType: "standard", Description: "Creative and performing arts"},
-		{Name: "Physical Education", Code: "PE", Level: "P4", IsCompulsory: true, Papers: 1, GradingType: "standard", Description: "Physical fitness and sports"},
-		{Name: "Agriculture", Code: "AGR", Level: "P4", IsCompulsory: true, Papers: 1, GradingType: "standard", Description: "Agricultural practices and environmental education"},
-		{Name: "ICT", Code: "ICT", Level: "P4", IsCompulsory: false, Papers: 1, GradingType: "standard", Description: "Information and Communication Technology"},
+		{Name: "English Language", Code: "ENG", Level: "P4", IsCompulsory: true, Papers: 1, GradingType: "primary_upper", Description: "English language and communication"},
+		{Name: "Mathematics", Code: "MATH", Level: "P4", IsCompulsory: true, Papers: 1, GradingType: "primary_upper", Description: "Mathematical concepts and problem solving"},
+		{Name: "Integrated Science", Code: "SCI", Level: "P4", IsCompulsory: true, Papers: 1, GradingType: "primary_upper", Description: "Scientific concepts and practical work"},
+		{Name: "Social Studies", Code: "SST", Level: "P4", IsCompulsory: true, Papers: 1, GradingType: "primary_upper", Description: "Social studies including CRE/IRE"},
+		{Name: "Local Language", Code: "LL", Level: "P4", IsCompulsory: true, Papers: 1, GradingType: "primary_upper", Description: "Acoli, Luganda, Lango, or Lumasaba"},
+		{Name: "Creative Arts", Code: "CA", Level: "P4", IsCompulsory: true, Papers: 1, GradingType: "primary_upper", Description: "Creative and performing arts"},
+		{Name: "Physical Education", Code: "PE", Level: "P4", IsCompulsory: true, Papers: 1, GradingType: "primary_upper", Description: "Physical fitness and sports"},
+		{Name: "Agriculture / Environmental Education", Code: "AGR", Level: "P4", IsCompulsory: true, Papers: 1, GradingType: "primary_upper", Description: "Agricultural practices and environmental education"},
+		{Name: "ICT", Code: "ICT", Level: "P4", IsCompulsory: false, Papers: 1, GradingType: "primary_upper", Description: "Information and Communication Technology"},
 	}
 
-	// S1-S4 compulsory subjects
-	s14Compulsory := []models.StandardSubject{
+	// S1-S4 Compulsory Subjects (S1-S2)
+	s12Compulsory := []models.StandardSubject{
 		{Name: "English Language", Code: "ENG", Level: "S1", IsCompulsory: true, Papers: 1, GradingType: "ncdc", Description: "English language and communication"},
 		{Name: "Mathematics", Code: "MATH", Level: "S1", IsCompulsory: true, Papers: 1, GradingType: "ncdc", Description: "Mathematical concepts and problem solving"},
 		{Name: "Physics", Code: "PHY", Level: "S1", IsCompulsory: true, Papers: 1, GradingType: "ncdc", Description: "Physical science and physics concepts"},
@@ -640,7 +342,7 @@ func seedStandardSubjects(db *gorm.DB) {
 		{Name: "Physical Education", Code: "PE", Level: "S1", IsCompulsory: true, Papers: 1, GradingType: "ncdc", Description: "Physical fitness and sports"},
 	}
 
-	// S1-S4 electives
+	// S1-S4 Electives
 	s14Electives := []models.StandardSubject{
 		{Name: "ICT / Computer Studies", Code: "ICT", Level: "S1", IsCompulsory: false, Papers: 1, GradingType: "ncdc", Description: "Information and Communication Technology"},
 		{Name: "Agriculture", Code: "AGR", Level: "S1", IsCompulsory: false, Papers: 1, GradingType: "ncdc", Description: "Agricultural science and practices"},
@@ -648,7 +350,7 @@ func seedStandardSubjects(db *gorm.DB) {
 		{Name: "Art and Design", Code: "AD", Level: "S1", IsCompulsory: false, Papers: 1, GradingType: "ncdc", Description: "Visual arts and design"},
 	}
 
-	// S5-S6 Principal subjects
+	// S5-S6 Principal Subjects
 	s56Principal := []models.StandardSubject{
 		{Name: "Mathematics", Code: "MATH", Level: "S5", IsCompulsory: false, Papers: 2, GradingType: "uneb", Description: "Advanced mathematics"},
 		{Name: "Physics", Code: "PHY", Level: "S5", IsCompulsory: false, Papers: 3, GradingType: "uneb", Description: "Advanced physics"},
@@ -656,196 +358,85 @@ func seedStandardSubjects(db *gorm.DB) {
 		{Name: "Biology", Code: "BIO", Level: "S5", IsCompulsory: false, Papers: 3, GradingType: "uneb", Description: "Advanced biology"},
 		{Name: "Geography", Code: "GEO", Level: "S5", IsCompulsory: false, Papers: 3, GradingType: "uneb", Description: "Advanced geography"},
 		{Name: "History & Political Education", Code: "HIST", Level: "S5", IsCompulsory: false, Papers: 3, GradingType: "uneb", Description: "Advanced history and political education"},
-		{Name: "Religious Education", Code: "RE", Level: "S5", IsCompulsory: false, Papers: 2, GradingType: "uneb", Description: "Advanced religious studies"},
+		{Name: "Religious Education", Code: "RE", Level: "S5", IsCompulsory: false, Papers: 2, GradingType: "uneb", Description: "Advanced religious studies (CRE or IRE)"},
 		{Name: "Entrepreneurship Education", Code: "ENT", Level: "S5", IsCompulsory: false, Papers: 2, GradingType: "uneb", Description: "Advanced entrepreneurship"},
 		{Name: "Agriculture", Code: "AGR", Level: "S5", IsCompulsory: false, Papers: 3, GradingType: "uneb", Description: "Advanced agriculture"},
 		{Name: "Economics", Code: "ECON", Level: "S5", IsCompulsory: false, Papers: 2, GradingType: "uneb", Description: "Economic theory and practice"},
 		{Name: "Luganda", Code: "LUG", Level: "S5", IsCompulsory: false, Papers: 2, GradingType: "uneb", Description: "Luganda language and literature"},
 		{Name: "Art and Design", Code: "AD", Level: "S5", IsCompulsory: false, Papers: 2, GradingType: "uneb", Description: "Advanced art and design"},
-		{Name: "Literature", Code: "LIT", Level: "S5", IsCompulsory: false, Papers: 2, GradingType: "uneb", Description: "Advanced literature studies"},
+		{Name: "Literature", Code: "LIT", Level: "S5", IsCompulsory: false, Papers: 2, GradingType: "uneb", Description: "Advanced English literature"},
 	}
 
-	// S5-S6 Subsidiary subjects
+	// S5-S6 Subsidiary Subjects
 	s56Subsidiary := []models.StandardSubject{
-		{Name: "General Paper", Code: "GP", Level: "S5", IsCompulsory: true, Papers: 1, GradingType: "uneb_subsidiary", Description: "General knowledge and critical thinking"},
-		{Name: "Information Communication Technology", Code: "ICT", Level: "S5", IsCompulsory: false, Papers: 1, GradingType: "uneb_subsidiary", Description: "Advanced ICT skills"},
-		{Name: "Subsidiary Mathematics", Code: "SUBMATH", Level: "S5", IsCompulsory: false, Papers: 1, GradingType: "uneb_subsidiary", Description: "Basic mathematics for non-math students"},
+		{Name: "General Paper", Code: "GP", Level: "S5", IsCompulsory: true, Papers: 1, GradingType: "uneb", Description: "General knowledge and current affairs"},
+		{Name: "Information Communication Technology", Code: "ICT", Level: "S5", IsCompulsory: false, Papers: 1, GradingType: "uneb", Description: "Information and Communication Technology"},
+		{Name: "Subsidiary Mathematics", Code: "SUBMATH", Level: "S5", IsCompulsory: false, Papers: 1, GradingType: "uneb", Description: "Subsidiary level mathematics"},
 	}
 
-	// Create all standard subjects
-	var allSubjects []models.StandardSubject
-	allSubjects = append(allSubjects, nurserySubjects...)
+	// Combine all subjects
+	allSubjects := []models.StandardSubject{}
+	allSubjects = append(allSubjects, nurseryDomains...)
 
-	// Add P1-P3 subjects for each level
-	for _, level := range []string{"P1", "P2", "P3"} {
-		for _, s := range p13Subjects {
-			s.Level = level
-			allSubjects = append(allSubjects, s)
+	// Replicate P1-P3 subjects for P2 and P3
+	for _, subject := range p13Subjects {
+		allSubjects = append(allSubjects, subject)
+		for _, level := range []string{"P2", "P3"} {
+			subjectCopy := subject
+			subjectCopy.Level = level
+			allSubjects = append(allSubjects, subjectCopy)
 		}
 	}
 
-	// Add P4-P7 subjects for each level
-	for _, level := range []string{"P4", "P5", "P6", "P7"} {
-		for _, s := range p47Subjects {
-			s.Level = level
-			allSubjects = append(allSubjects, s)
+	// Replicate P4-P7 subjects for P5, P6, and P7
+	for _, subject := range p47Subjects {
+		allSubjects = append(allSubjects, subject)
+		for _, level := range []string{"P5", "P6", "P7"} {
+			subjectCopy := subject
+			subjectCopy.Level = level
+			allSubjects = append(allSubjects, subjectCopy)
 		}
 	}
 
-	// Add S1-S4 subjects for each level
-	for _, level := range []string{"S1", "S2", "S3", "S4"} {
-		for _, s := range s14Compulsory {
-			s.Level = level
-			allSubjects = append(allSubjects, s)
-		}
-		for _, s := range s14Electives {
-			s.Level = level
-			allSubjects = append(allSubjects, s)
+	// Replicate S1-S2 compulsory subjects for S2, S3, and S4
+	for _, subject := range s12Compulsory {
+		allSubjects = append(allSubjects, subject)
+		for _, level := range []string{"S2", "S3", "S4"} {
+			subjectCopy := subject
+			subjectCopy.Level = level
+			allSubjects = append(allSubjects, subjectCopy)
 		}
 	}
 
-	// Add S5-S6 subjects for each level
-	for _, level := range []string{"S5", "S6"} {
-		for _, s := range s56Principal {
-			s.Level = level
-			allSubjects = append(allSubjects, s)
-		}
-		for _, s := range s56Subsidiary {
-			s.Level = level
-			allSubjects = append(allSubjects, s)
+	// Replicate S1-S4 electives for S2, S3, and S4
+	for _, subject := range s14Electives {
+		allSubjects = append(allSubjects, subject)
+		for _, level := range []string{"S2", "S3", "S4"} {
+			subjectCopy := subject
+			subjectCopy.Level = level
+			allSubjects = append(allSubjects, subjectCopy)
 		}
 	}
 
-	// Insert all subjects
-	for _, subject := range allSubjects {
-		db.Create(&subject)
+	// Replicate S5-S6 subjects for S6
+	for _, subject := range s56Principal {
+		allSubjects = append(allSubjects, subject)
+		subjectCopy := subject
+		subjectCopy.Level = "S6"
+		allSubjects = append(allSubjects, subjectCopy)
 	}
 
-	log.Printf("Seeded %d standard subjects from curriculum", len(allSubjects))
-}
-
-func migrateToStandardSubjects(db *gorm.DB) {
-	log.Println("Migrating existing data to use standard subjects...")
-
-	// First, ensure standard subjects are seeded
-	var count int64
-	db.Model(&models.StandardSubject{}).Count(&count)
-	if count == 0 {
-		log.Println("No standard subjects found. Seeding first...")
-		seedStandardSubjects(db)
+	for _, subject := range s56Subsidiary {
+		allSubjects = append(allSubjects, subject)
+		subjectCopy := subject
+		subjectCopy.Level = "S6"
+		allSubjects = append(allSubjects, subjectCopy)
 	}
 
-	// Update subject_results to reference standard_subjects
-	log.Println("Updating subject results to reference standard subjects...")
-
-	// Get all subject results and their associated school subjects
-	type ResultWithSubject struct {
-		models.SubjectResult
-		SubjectName  string `json:"subject_name"`
-		SubjectLevel string `json:"subject_level"`
+	// Batch insert all subjects
+	if err := db.CreateInBatches(allSubjects, 100).Error; err != nil {
+		log.Fatal("Failed to seed standard subjects:", err)
 	}
 
-	var results []ResultWithSubject
-	db.Table("subject_results").
-		Select("subject_results.*, subjects.name as subject_name, subjects.level as subject_level").
-		Joins("LEFT JOIN subjects ON subject_results.subject_id = subjects.id").
-		Where("subjects.id IS NOT NULL").
-		Scan(&results)
-
-	for _, result := range results {
-		if result.SubjectName != "" {
-			// Find matching standard subject
-			var standardSubject models.StandardSubject
-			err := db.Where("name = ? AND level = ?", result.SubjectName, result.SubjectLevel).First(&standardSubject).Error
-			if err == nil {
-				// Update the result to reference the standard subject
-				db.Model(&models.SubjectResult{}).Where("id = ?", result.ID).Update("subject_id", standardSubject.ID)
-				log.Printf("Updated result %s to use standard subject %s", result.ID, standardSubject.Name)
-			} else {
-				log.Printf("Warning: Could not find standard subject for %s %s", result.SubjectName, result.SubjectLevel)
-			}
-		}
-	}
-
-	// Update assessments to reference standard_subjects
-	log.Println("Updating assessments to reference standard subjects...")
-
-	type AssessmentWithSubject struct {
-		models.Assessment
-		SubjectName  string `json:"subject_name"`
-		SubjectLevel string `json:"subject_level"`
-	}
-
-	var assessments []AssessmentWithSubject
-	db.Table("assessments").
-		Select("assessments.*, subjects.name as subject_name, subjects.level as subject_level").
-		Joins("LEFT JOIN subjects ON assessments.subject_id = subjects.id").
-		Where("subjects.id IS NOT NULL").
-		Scan(&assessments)
-
-	for _, assessment := range assessments {
-		if assessment.SubjectName != "" {
-			// Find matching standard subject
-			var standardSubject models.StandardSubject
-			err := db.Where("name = ? AND level = ?", assessment.SubjectName, assessment.SubjectLevel).First(&standardSubject).Error
-			if err == nil {
-				// Update the assessment to reference the standard subject
-				db.Model(&models.Assessment{}).Where("id = ?", assessment.ID).Update("subject_id", standardSubject.ID)
-				log.Printf("Updated assessment %s to use standard subject %s", assessment.ID, standardSubject.Name)
-			} else {
-				log.Printf("Warning: Could not find standard subject for %s %s", assessment.SubjectName, assessment.SubjectLevel)
-			}
-		}
-	}
-
-	log.Println("Migration to standard subjects completed")
-	log.Println("Note: Old school-specific subjects are preserved but no longer used for new data")
-}
-
-func fixForeignKeys(db *gorm.DB) {
-	log.Println("Fixing foreign key constraints...")
-
-	// Drop existing foreign key constraints
-	db.Exec("ALTER TABLE subject_results DROP FOREIGN KEY fk_subject_results_subject")
-	db.Exec("ALTER TABLE assessments DROP FOREIGN KEY fk_assessments_subject")
-
-	// Add new foreign key constraints pointing to standard_subjects
-	db.Exec("ALTER TABLE subject_results ADD CONSTRAINT fk_subject_results_standard_subject FOREIGN KEY (subject_id) REFERENCES standard_subjects(id)")
-	db.Exec("ALTER TABLE assessments ADD CONSTRAINT fk_assessments_standard_subject FOREIGN KEY (subject_id) REFERENCES standard_subjects(id)")
-
-	log.Println("Foreign key constraints fixed")
-}
-
-func cleanupOrphanedData(db *gorm.DB) {
-	log.Println("Cleaning up orphaned data...")
-
-	// Delete users with non-existent school_id (except system admins)
-	result := db.Exec("DELETE FROM users WHERE school_id IS NOT NULL AND role != 'system_admin' AND school_id NOT IN (SELECT id FROM schools)")
-	log.Printf("Deleted %d orphaned users", result.RowsAffected)
-
-	// Delete students with non-existent school_id
-	result = db.Exec("DELETE FROM students WHERE school_id NOT IN (SELECT id FROM schools)")
-	log.Printf("Deleted %d orphaned students", result.RowsAffected)
-
-	// Delete classes with non-existent school_id
-	result = db.Exec("DELETE FROM classes WHERE school_id NOT IN (SELECT id FROM schools)")
-	log.Printf("Deleted %d orphaned classes", result.RowsAffected)
-
-	// Delete subjects with non-existent school_id
-	result = db.Exec("DELETE FROM subjects WHERE school_id NOT IN (SELECT id FROM schools)")
-	log.Printf("Deleted %d orphaned subjects", result.RowsAffected)
-
-	// Delete subject_results with non-existent school_id
-	result = db.Exec("DELETE FROM subject_results WHERE school_id NOT IN (SELECT id FROM schools)")
-	log.Printf("Deleted %d orphaned subject results", result.RowsAffected)
-
-	// Delete assessments with non-existent school_id
-	result = db.Exec("DELETE FROM assessments WHERE school_id NOT IN (SELECT id FROM schools)")
-	log.Printf("Deleted %d orphaned assessments", result.RowsAffected)
-
-	// Delete grading_rules with non-existent school_id
-	result = db.Exec("DELETE FROM grading_rules WHERE school_id NOT IN (SELECT id FROM schools)")
-	log.Printf("Deleted %d orphaned grading rules", result.RowsAffected)
-
-	log.Println("Orphaned data cleanup completed")
+	log.Printf("Successfully seeded %d standard subjects", len(allSubjects))
 }
