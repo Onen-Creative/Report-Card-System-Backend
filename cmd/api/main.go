@@ -76,9 +76,12 @@ func main() {
 	// Static files
 	r.Static("/logos", "./public/logos")
 
-	// Health check
-	r.GET("/healthz", func(c *gin.Context) {
-		c.JSON(200, gin.H{"status": "ok"})
+	// Health check - simple endpoint that doesn't require DB
+	r.GET("/health", func(c *gin.Context) {
+		c.JSON(200, gin.H{"status": "ok", "service": "school-system-api"})
+	})
+	r.GET("/", func(c *gin.Context) {
+		c.JSON(200, gin.H{"message": "School Management System API", "status": "running"})
 	})
 
 	// Metrics
