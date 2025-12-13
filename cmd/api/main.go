@@ -143,6 +143,25 @@ func main() {
 
 				// Audit logs
 				sysAdmin.GET("/audit/recent", auditHandler.GetRecentActivity)
+
+				// Migration and seeding endpoints
+				sysAdmin.POST("/migrate", func(c *gin.Context) {
+					if err := database.Migrate(db); err != nil {
+						c.JSON(500, gin.H{"error": err.Error()})
+						return
+					}
+					c.JSON(200, gin.H{"message": "Migration completed successfully"})
+				})
+
+				sysAdmin.POST("/seed-admin", func(c *gin.Context) {
+					seedAdmin(db, cfg)
+					c.JSON(200, gin.H{"message": "Admin users seeded successfully"})
+				})
+
+				sysAdmin.POST("/seed-subjects", func(c *gin.Context) {
+					seedStandardSubjects(db)
+					c.JSON(200, gin.H{"message": "Standard subjects seeded successfully"})
+				})
 			}
 
 			// School Admin routes
