@@ -208,6 +208,11 @@ func main() {
 			protected.GET("/subjects", subjectHandler.ListStandardSubjects)
 			protected.GET("/subjects/levels", subjectHandler.GetLevels)
 			protected.POST("/results", resultHandler.CreateOrUpdate)
+			protected.POST("/debug/results", func(c *gin.Context) {
+				var body map[string]interface{}
+				c.ShouldBindJSON(&body)
+				c.JSON(200, gin.H{"received": body, "headers": c.Request.Header})
+			})
 			protected.POST("/upload/logo", uploadHandler.UploadLogo)
 		}
 	}
