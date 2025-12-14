@@ -55,7 +55,7 @@ func main() {
 	// CORS
 	r.Use(func(c *gin.Context) {
 		origin := c.Request.Header.Get("Origin")
-		allowedOrigins := []string{"http://localhost:5173", "http://localhost:5174", "https://your-app.netlify.app"}
+		allowedOrigins := []string{"http://localhost:5173", "http://localhost:5174", "https://report-card-system.netlify.app"}
 		for _, allowedOrigin := range allowedOrigins {
 			if origin == allowedOrigin {
 				c.Writer.Header().Set("Access-Control-Allow-Origin", origin)
