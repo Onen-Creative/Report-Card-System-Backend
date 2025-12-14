@@ -83,8 +83,8 @@ func main() {
 		c.JSON(200, gin.H{"message": "School Management System API", "status": "running"})
 	})
 
-	// Public setup endpoints for initial deployment
-	r.POST("/setup/migrate", func(c *gin.Context) {
+	// Public setup endpoints for initial deployment (GET for browser access)
+	r.GET("/setup/migrate", func(c *gin.Context) {
 		if err := database.Migrate(db); err != nil {
 			c.JSON(500, gin.H{"error": err.Error()})
 			return
@@ -92,12 +92,12 @@ func main() {
 		c.JSON(200, gin.H{"message": "Migration completed successfully"})
 	})
 
-	r.POST("/setup/seed-admin", func(c *gin.Context) {
+	r.GET("/setup/seed-admin", func(c *gin.Context) {
 		seedAdmin(db, cfg)
 		c.JSON(200, gin.H{"message": "Admin users seeded successfully"})
 	})
 
-	r.POST("/setup/seed-subjects", func(c *gin.Context) {
+	r.GET("/setup/seed-subjects", func(c *gin.Context) {
 		seedStandardSubjects(db)
 		c.JSON(200, gin.H{"message": "Standard subjects seeded successfully"})
 	})
