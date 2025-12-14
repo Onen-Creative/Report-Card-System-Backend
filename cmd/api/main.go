@@ -77,6 +77,7 @@ func main() {
 
 	// Health check - simple endpoint that doesn't require DB
 	r.GET("/health", func(c *gin.Context) {
+		c.Header("Cache-Control", "no-cache")
 		c.JSON(200, gin.H{"status": "ok", "service": "school-system-api"})
 	})
 	r.GET("/", func(c *gin.Context) {

@@ -44,7 +44,7 @@ func maskPassword(dsn string) string {
 func Migrate(db *gorm.DB) error {
 	log.Println("Running migrations...")
 	
-	return db.AutoMigrate(
+	err := db.AutoMigrate(
 		&models.School{},
 		&models.User{},
 		&models.Class{},
@@ -61,4 +61,16 @@ func Migrate(db *gorm.DB) error {
 		&models.GradingRule{},
 		&models.RefreshToken{},
 	)
+	if err != nil {
+		return err
+	}
+
+	// Add performance indexes
+	db.Exec("CREATE INDEX IF NOT EXISTS idx_users_email ON users(email)")
+	db.Exec("CREATE INDEX IF NOT EXISTS idx_students_school ON students(school_id)")
+	db.Exec("CREATE INDEX IF NOT EXISTS idx_classes_school_year ON classes(school_id, year)")
+	db.Exec("CREATE INDEX IF NOT EXISTS idx_marks_student ON marks(student_id)")
+	db.Exec("CREATE INDEX IF NOT EXISTS idx_standard_subjects_level ON standard_subjects(level)")
+	
+	return nil
 }
