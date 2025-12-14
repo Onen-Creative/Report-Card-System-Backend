@@ -47,7 +47,7 @@ func (b *BaseModel) BeforeCreate(tx *gorm.DB) error {
 type School struct {
 	BaseModel
 	Name         string `gorm:"type:varchar(255);not null" json:"name"`
-	Type         string `gorm:"type:enum('Nursery','Primary','Secondary');not null" json:"type"`
+	Type         string `gorm:"type:varchar(20);not null" json:"type"`
 	Address      string `gorm:"type:text" json:"address"`
 	Country      string `gorm:"type:varchar(100);default:'Uganda'" json:"country"`
 	Region       string `gorm:"type:varchar(100)" json:"region"`
@@ -64,7 +64,7 @@ type User struct {
 	SchoolID     *uuid.UUID `gorm:"type:char(36);index" json:"school_id"`
 	Email        string     `gorm:"type:varchar(255);uniqueIndex;not null" json:"email"`
 	PasswordHash string     `gorm:"type:varchar(255);not null" json:"-"`
-	Role         string     `gorm:"type:enum('system_admin','school_admin','teacher');not null" json:"role"`
+	Role         string     `gorm:"type:varchar(20);not null" json:"role"`
 	FullName     string     `gorm:"type:varchar(255);not null" json:"full_name"`
 	IsActive     bool       `gorm:"default:true" json:"is_active"`
 	Meta         JSONB      `gorm:"type:json" json:"meta"`
@@ -79,7 +79,7 @@ type Class struct {
 	Level     string     `gorm:"type:varchar(50);not null" json:"level"`
 	TeacherID *uuid.UUID `gorm:"type:char(36);index" json:"teacher_id"`
 	Year      int        `gorm:"not null;index:idx_class_school_year_term" json:"year"`
-	Term      string     `gorm:"type:enum('Term1','Term2','Term3');not null;index:idx_class_school_year_term" json:"term"`
+	Term      string     `gorm:"type:varchar(10);not null;index:idx_class_school_year_term" json:"term"`
 	School    *School    `gorm:"foreignKey:SchoolID" json:"school,omitempty"`
 	Teacher   *User      `gorm:"foreignKey:TeacherID" json:"teacher,omitempty"`
 }
@@ -91,7 +91,7 @@ type Student struct {
 	AdmissionNo string    `gorm:"type:varchar(50);not null;uniqueIndex:idx_admission_school" json:"admission_no"`
 	FirstName   string    `gorm:"type:varchar(100);not null" json:"first_name"`
 	LastName    string    `gorm:"type:varchar(100);not null" json:"last_name"`
-	Gender      string    `gorm:"type:enum('Male','Female','Other')" json:"gender"`
+	Gender      string    `gorm:"type:varchar(10)" json:"gender"`
 	School      *School   `gorm:"foreignKey:SchoolID" json:"school,omitempty"`
 }
 
@@ -101,8 +101,8 @@ type Enrollment struct {
 	StudentID  uuid.UUID  `gorm:"type:char(36);not null;index:idx_enrollment_student_class" json:"student_id"`
 	ClassID    uuid.UUID  `gorm:"type:char(36);not null;index:idx_enrollment_student_class" json:"class_id"`
 	Year       int        `gorm:"not null;index" json:"year"`
-	Term       string     `gorm:"type:enum('Term1','Term2','Term3');not null" json:"term"`
-	Status     string     `gorm:"type:enum('active','transferred_out','graduated');default:'active'" json:"status"`
+	Term       string     `gorm:"type:varchar(10);not null" json:"term"`
+	Status     string     `gorm:"type:varchar(20);default:'active'" json:"status"`
 	EnrolledOn time.Time  `gorm:"type:date" json:"enrolled_on"`
 	LeftOn     *time.Time `gorm:"type:date" json:"left_on,omitempty"`
 	Student    *Student   `gorm:"foreignKey:StudentID" json:"student,omitempty"`
@@ -127,10 +127,10 @@ type Assessment struct {
 	SchoolID        uuid.UUID       `gorm:"type:char(36);not null;index" json:"school_id"`
 	ClassID         uuid.UUID       `gorm:"type:char(36);not null;index:idx_assessment_class_subject" json:"class_id"`
 	SubjectID       uuid.UUID       `gorm:"type:char(36);not null;index:idx_assessment_class_subject" json:"subject_id"`
-	AssessmentType  string          `gorm:"type:enum('CA','Exam','Project','Observation','Paper1','Paper2','Paper3','Paper4');not null" json:"assessment_type"`
+	AssessmentType  string          `gorm:"type:varchar(20);not null" json:"assessment_type"`
 	MaxMarks        int             `gorm:"not null" json:"max_marks"`
 	Date            time.Time       `gorm:"type:date" json:"date"`
-	Term            string          `gorm:"type:enum('Term1','Term2','Term3');not null" json:"term"`
+	Term            string          `gorm:"type:varchar(10);not null" json:"term"`
 	Year            int             `gorm:"not null" json:"year"`
 	Meta            JSONB           `gorm:"type:json" json:"meta"`
 	CreatedBy       uuid.UUID       `gorm:"type:char(36);not null" json:"created_by"`
@@ -160,7 +160,7 @@ type SubjectResult struct {
 	StudentID           uuid.UUID       `gorm:"type:char(36);not null;uniqueIndex:idx_unique_result" json:"student_id"`
 	SubjectID           uuid.UUID       `gorm:"type:char(36);not null;uniqueIndex:idx_unique_result" json:"subject_id"`
 	ClassID             uuid.UUID       `gorm:"type:char(36);not null;index" json:"class_id"`
-	Term                string          `gorm:"type:enum('Term1','Term2','Term3');not null;uniqueIndex:idx_unique_result" json:"term"`
+	Term                string          `gorm:"type:varchar(10);not null;uniqueIndex:idx_unique_result" json:"term"`
 	Year                int             `gorm:"not null;uniqueIndex:idx_unique_result" json:"year"`
 	SchoolID            uuid.UUID       `gorm:"type:char(36);not null;index" json:"school_id"`
 	RawMarks            JSONB           `gorm:"type:json" json:"raw_marks"`
@@ -178,10 +178,10 @@ type ReportCard struct {
 	BaseModel
 	StudentID   uuid.UUID  `gorm:"type:char(36);not null;index:idx_report_student_term" json:"student_id"`
 	ClassID     uuid.UUID  `gorm:"type:char(36);not null;index" json:"class_id"`
-	Term        string     `gorm:"type:enum('Term1','Term2','Term3');not null;index:idx_report_student_term" json:"term"`
+	Term        string     `gorm:"type:varchar(10);not null;index:idx_report_student_term" json:"term"`
 	Year        int        `gorm:"not null;index:idx_report_student_term" json:"year"`
 	PDFURL      string     `gorm:"type:varchar(500)" json:"pdf_url"`
-	Status      string     `gorm:"type:enum('generated','pending','failed');default:'pending'" json:"status"`
+	Status      string     `gorm:"type:varchar(20);default:'pending'" json:"status"`
 	GeneratedBy *uuid.UUID `gorm:"type:char(36)" json:"generated_by,omitempty"`
 	GeneratedAt *time.Time `json:"generated_at,omitempty"`
 	Meta        JSONB      `gorm:"type:json" json:"meta"`
@@ -214,7 +214,7 @@ type Job struct {
 	ID         uuid.UUID  `gorm:"type:char(36);primaryKey" json:"id"`
 	Type       string     `gorm:"type:varchar(50);not null;index" json:"type"`
 	Payload    JSONB      `gorm:"type:json" json:"payload"`
-	Status     string     `gorm:"type:enum('pending','processing','completed','failed');default:'pending';index" json:"status"`
+	Status     string     `gorm:"type:varchar(20);default:'pending';index" json:"status"`
 	Attempts   int        `gorm:"default:0" json:"attempts"`
 	Result     JSONB      `gorm:"type:json" json:"result"`
 	CreatedAt  time.Time  `gorm:"autoCreateTime;index" json:"created_at"`
